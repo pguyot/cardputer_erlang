@@ -3,6 +3,8 @@ cardputer_erlang
 
 Small M5 Cardputer demo using AtomVM.
 
+![cardputer_erlang](https://github.com/user-attachments/assets/8c6051c6-f753-42d6-9b89-0acd7fc18f73)
+
 Build and flash
 ---------------
 
