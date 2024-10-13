@@ -19,7 +19,8 @@
 -record(state, {
     start_line :: {non_neg_integer(), non_neg_integer()},
     previous_pressed = undefined,
-    eval_str = []
+    eval_str = [],
+    bindings = []
 }).
 
 start_link() ->
@@ -65,14 +66,21 @@ handle_info(_Other, State) ->
 terminate(_Reason, State) ->
     {ok, State}.
 
-process_event(#key_pressed{code = ?KEY_CODE_OK}, #state{eval_str = Script} = State) ->
-    {ok, Tokens, _} = erl_scan:string(lists:reverse(Script)),
-    {ok, Parsed} = erl_parse:parse_exprs(Tokens),
-    {value, Result, _} = erl_eval:exprs(Parsed, []),
-    m5_display:start_write(),
-    m5_display:print(iolist_to_binary(io_lib:format("~n~p~n>", [Result]))),
-    m5_display:end_write(),
-    State#state{start_line = m5_display:get_cursor(), eval_str = []};
+process_event(#key_pressed{code = ?KEY_CODE_OK}, #state{eval_str = Script, bindings = Bindings} = State) ->
+    try
+        {ok, Tokens, _} = erl_scan:string(lists:reverse(Script)),
+        {ok, Parsed} = erl_parse:parse_exprs(Tokens),
+        {value, Result, NewBindings} = erl_eval:exprs(Parsed, Bindings),
+        m5_display:start_write(),
+        m5_display:print(iolist_to_binary(io_lib:format("~n~p~n>", [Result]))),
+        m5_display:end_write(),
+        State#state{start_line = m5_display:get_cursor(), eval_str = [], bindings = NewBindings}
+    catch T:V ->
+        m5_display:start_write(),
+        m5_display:print(iolist_to_binary(io_lib:format("~n~p~n>", [{T, V}]))),
+        m5_display:end_write(),
+        State#state{start_line = m5_display:get_cursor(), eval_str = []}
+    end;
 process_event(#key_pressed{code = ?KEY_CODE_BACKSPACE}, #state{eval_str = []} = State) ->
     State;
 process_event(#key_pressed{code = ?KEY_CODE_BACKSPACE}, #state{start_line = {_, StartY}, eval_str = [_Last | Tail]} = State) ->
